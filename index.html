@@ -1,0 +1,716 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>除法直式小教室 ｜ 兩位數 ÷ 一位數</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --cell: 52px;
+    --blue: #4f7cff;
+    --blue-d: #3559d6;
+    --orange: #ff8c42;
+    --ink: #2b3557;
+  }
+
+  body {
+    font-family: "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", system-ui, sans-serif;
+    background: linear-gradient(160deg, #eef3ff 0%, #f7f0ff 45%, #fff7ee 100%);
+    min-height: 100vh;
+    padding: 18px 14px 60px;
+    color: var(--ink);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .app { max-width: 1020px; margin: 0 auto; }
+
+  header { text-align: center; margin-bottom: 18px; }
+  header h1 {
+    font-size: clamp(1.35rem, 4vw, 1.9rem);
+    color: #2c3763;
+    letter-spacing: 1px;
+  }
+  header p {
+    color: #8892ad;
+    margin-top: 6px;
+    font-size: .95rem;
+  }
+
+  /* ---------- 控制列 ---------- */
+  .controls {
+    display: flex; gap: 10px; justify-content: center; align-items: center;
+    flex-wrap: wrap;
+    background: #fff;
+    padding: 14px 18px;
+    border-radius: 18px;
+    box-shadow: 0 8px 24px rgba(80, 100, 180, .13);
+    margin-bottom: 18px;
+  }
+  .controls input {
+    width: 84px; padding: 9px 4px;
+    font-size: 1.35rem; text-align: center; font-weight: 800;
+    border: 2px solid #dce3f5; border-radius: 13px;
+    outline: none; color: var(--ink);
+    font-family: inherit;
+    transition: border-color .2s, box-shadow .2s;
+  }
+  .controls input:focus {
+    border-color: var(--blue);
+    box-shadow: 0 0 0 4px rgba(79,124,255,.14);
+  }
+  .controls .op { font-size: 1.5rem; font-weight: 800; color: #9aa4c0; }
+
+  button {
+    font-family: inherit;
+    font-size: .98rem; font-weight: 800;
+    padding: 10px 22px;
+    border: none; border-radius: 13px;
+    cursor: pointer;
+    transition: transform .12s, box-shadow .18s, filter .18s;
+    color: #fff;
+    background: linear-gradient(135deg, #6f92ff, #4f7cff);
+    box-shadow: 0 4px 12px rgba(79,124,255,.32);
+  }
+  button:hover:not(:disabled) { filter: brightness(1.06); transform: translateY(-1px); }
+  button:active:not(:disabled) { transform: translateY(1px) scale(.98); }
+  button:disabled { opacity: .38; cursor: not-allowed; box-shadow: none; }
+  button.ghost {
+    background: #fff; color: #5a6a94;
+    border: 2px solid #dce3f5;
+    box-shadow: none;
+  }
+  button.ghost:hover:not(:disabled) { background: #f4f7ff; }
+
+  /* ---------- 版面 ---------- */
+  .main {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr);
+    gap: 16px;
+    margin-bottom: 16px;
+  }
+  @media (max-width: 760px) {
+    .main { grid-template-columns: 1fr; }
+  }
+
+  .panel {
+    background: #fff;
+    border-radius: 20px;
+    padding: 16px;
+    box-shadow: 0 8px 24px rgba(80, 100, 180, .11);
+    display: flex; flex-direction: column;
+    min-height: 320px;
+  }
+  .panel-title {
+    font-size: .86rem; font-weight: 800; letter-spacing: 1.5px;
+    color: #93a0c0; margin-bottom: 12px;
+    display: flex; align-items: center; gap: 7px;
+  }
+  .panel-title::before {
+    content: ''; width: 5px; height: 15px; border-radius: 3px;
+    background: linear-gradient(180deg, #7ba0ff, #b58bff);
+  }
+
+  /* ---------- 直式 ---------- */
+  .ws-wrap {
+    flex: 1;
+    display: flex; align-items: center; justify-content: center;
+    padding: 6px 0;
+  }
+  .worksheet { position: relative; }
+
+  .cell {
+    position: absolute;
+    width: var(--cell); height: var(--cell);
+    display: flex; align-items: center; justify-content: center;
+    font-size: calc(var(--cell) * .5);
+    font-weight: 800;
+    font-variant-numeric: tabular-nums;
+    color: var(--ink);
+    transition: opacity .38s ease, transform .38s cubic-bezier(.34,1.56,.64,1), color .3s;
+  }
+  .cell.hidden { opacity: 0; transform: scale(.35); }
+  .cell.quot { color: var(--blue-d); }
+  .cell.now { color: #ff5a1f; }
+  .cell.divisor-cell { color: #ff6b35; }
+
+  .h-line {
+    position: absolute;
+    height: 3px;
+    background: #3a4468;
+    border-radius: 2px;
+    transition: opacity .35s ease, transform .35s ease;
+    transform-origin: left center;
+  }
+  .h-line.hidden { opacity: 0; transform: scaleX(0); }
+
+  .bracket-h {
+    position: absolute; height: 3px;
+    background: #3a4468; border-radius: 2px;
+  }
+  .bracket-v {
+    position: absolute; width: 3px;
+    background: #3a4468; border-radius: 2px;
+  }
+
+  /* ---------- 圖解區 ---------- */
+  .visual {
+    flex: 1;
+    display: flex; flex-direction: column;
+    gap: 12px;
+    justify-content: center;
+    min-height: 260px;
+    padding: 4px 2px;
+  }
+
+  .vsec {
+    display: flex; flex-direction: column; gap: 7px;
+    animation: pop .35s cubic-bezier(.34,1.56,.64,1);
+  }
+  @keyframes pop {
+    from { opacity: 0; transform: translateY(8px) scale(.97); }
+    to   { opacity: 1; transform: none; }
+  }
+
+  .vlabel {
+    font-size: .86rem; font-weight: 700; color: #6b7799;
+    line-height: 1.5;
+  }
+  .vlabel b { color: #ff5a1f; }
+
+  .vnote {
+    font-size: .82rem; color: #94a0bd; font-weight: 600;
+  }
+
+  .vrow {
+    display: flex; flex-wrap: wrap; gap: 5px; align-items: center;
+    min-height: 8px;
+  }
+
+  .ten {
+    width: 34px; height: 34px;
+    border-radius: 9px;
+    background: linear-gradient(145deg, #7ba0ff, #4f7cff);
+    color: #fff; font-size: .72rem; font-weight: 800;
+    display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 3px 8px rgba(79,124,255,.28);
+    flex: none;
+    animation: pop .3s cubic-bezier(.34,1.56,.64,1);
+  }
+
+  .one {
+    width: 15px; height: 15px; border-radius: 50%;
+    background: linear-gradient(145deg, #ffb06b, #ff8c42);
+    box-shadow: 0 2px 5px rgba(255,140,66,.35);
+    flex: none;
+    animation: pop .25s cubic-bezier(.34,1.56,.64,1);
+  }
+
+  .vgroups {
+    display: flex; gap: 12px; flex-wrap: wrap;
+    align-items: flex-start;
+  }
+  .vgroup {
+    display: flex; flex-wrap: wrap; gap: 5px;
+    align-items: center; justify-content: center;
+    padding: 8px;
+    min-width: 46px;
+    min-height: 50px;
+    border: 2px dashed #bccbf0;
+    border-radius: 12px;
+    background: #f7faff;
+  }
+
+  .vleftover {
+    display: flex; gap: 5px; flex-wrap: wrap;
+    padding: 6px 8px;
+    border: 2px dashed #ffc7a3;
+    border-radius: 12px;
+    background: #fff8f2;
+  }
+
+  .vresult {
+    display: flex; align-items: center; gap: 10px;
+    flex-wrap: wrap;
+    font-size: 1.05rem; font-weight: 800;
+  }
+  .tag {
+    padding: 6px 12px; border-radius: 10px;
+    font-size: .9rem;
+  }
+  .ten-tag { background: #e6edff; color: var(--blue-d); }
+  .one-tag { background: #fff0e3; color: #d9631b; }
+  .big {
+    font-size: 2rem; color: #ff5a1f;
+    line-height: 1;
+  }
+  .plus { color: #b6c0d8; }
+
+  /* ---------- 步驟列 ---------- */
+  .stepper {
+    display: flex; gap: 10px; justify-content: center;
+    margin-bottom: 14px;
+    flex-wrap: wrap;
+  }
+
+  .explain {
+    background: #fff;
+    border-radius: 18px;
+    padding: 16px 20px;
+    box-shadow: 0 8px 24px rgba(80, 100, 180, .11);
+    font-size: .98rem;
+    line-height: 1.75;
+    color: #4a5578;
+    border-left: 6px solid var(--blue);
+    min-height: 74px;
+    display: flex; align-items: center;
+    animation: pop .3s ease;
+  }
+  .explain b { color: #ff5a1f; }
+</style>
+</head>
+<body>
+
+<div class="app">
+  <header>
+    <h1>除法直式小教室</h1>
+    <p>兩位數 ÷ 一位數 ｜ 一步一步看懂直式怎麼算</p>
+  </header>
+
+  <div class="controls">
+    <input type="number" id="dividend" value="84" min="10" max="99" inputmode="numeric">
+    <span class="op">÷</span>
+    <input type="number" id="divisor" value="3" min="2" max="9" inputmode="numeric">
+    <button id="go">開始</button>
+    <button id="rand" class="ghost">🎲 隨機出題</button>
+  </div>
+
+  <div class="main">
+    <div class="panel">
+      <div class="panel-title">直式計算</div>
+      <div class="ws-wrap">
+        <div class="worksheet" id="worksheet"></div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-title">分一分 ｜ 直觀圖解</div>
+      <div class="visual" id="visual"></div>
+    </div>
+  </div>
+
+  <div class="stepper">
+    <button id="prev" class="ghost">◀ 上一步</button>
+    <button id="play">▶ 自動播放</button>
+    <button id="next">下一步 ▶</button>
+  </div>
+
+  <div class="explain" id="explain"></div>
+</div>
+
+<script>
+/* =========================================================
+   常數
+   ========================================================= */
+const CELL = 52;
+document.documentElement.style.setProperty('--cell', CELL + 'px');
+
+const $ = id => document.getElementById(id);
+
+let problem = null;
+let curStep = 1;
+let playTimer = null;
+
+/* =========================================================
+   圖形小工具
+   ========================================================= */
+const tenHTML = n => '<div class="ten">10</div>'.repeat(Math.max(0, n));
+const oneHTML = n => '<div class="one"></div>'.repeat(Math.max(0, n));
+
+/* =========================================================
+   建立題目：直式格線 + 步驟 + 圖解
+   ========================================================= */
+function buildProblem(a, b) {
+  const d1 = Math.floor(a / 10);   // 十位
+  const d2 = a % 10;               // 個位
+  const quotient  = Math.floor(a / b);
+  const remainder = a % b;
+
+  const cells = [];   // { r, c, t, s }
+  const lines = [];   // { r, c1, c2, s }
+  const steps = [];   // { text, vis }
+
+  let R = 2;          // 下一個可用的列
+  let S = 1;          // 步驟編號
+
+  /* ---- 步驟 1：寫下被除數 ---- */
+  cells.push({ r: 1, c: 1, t: d1, s: 1 });
+  cells.push({ r: 1, c: 2, t: d2, s: 1 });
+
+  steps.push({
+    text: `我們要把 <b>${a}</b> 平均分成 <b>${b}</b> 份。先把算式寫成直式：<b>${a}</b> 放在裡面，<b>${b}</b> 放在左邊。`,
+    vis: () => `
+      <div class="vsec">
+        <div class="vlabel">十位：<b>${d1}</b> 個「十」</div>
+        <div class="vrow">${tenHTML(d1)}</div>
+      </div>
+      <div class="vsec">
+        <div class="vlabel">個位：<b>${d2}</b> 個「一」</div>
+        <div class="vrow">${oneHTML(d2)}</div>
+      </div>`
+  });
+  S++;
+
+  /* =====================================================
+     情況 A：十位 ≥ 除數 —— 先分十位
+     ===================================================== */
+  if (d1 >= b) {
+    const q1 = Math.floor(d1 / b);
+    const p1 = q1 * b;
+    const r1 = d1 - p1;
+    const n2 = r1 * 10 + d2;
+    const q2 = Math.floor(n2 / b);
+    const p2 = q2 * b;
+    const r2 = n2 - p2;
+
+    /* ---- 步驟 2：十位除法 ---- */
+    cells.push({ r: 0, c: 1, t: q1, s: S, quot: true });
+    cells.push({ r: R, c: 1, t: p1, s: S });
+    lines.push({ r: R + 1, c1: 1, c2: 2, s: S });
+    R += 2;
+
+    steps.push({
+      text: `先看<b>十位</b>：${d1} ÷ ${b} 最多可以分到 <b>${q1}</b>，把 ${q1} 寫在商的十位。<br>${q1} × ${b} = ${p1}，把 ${p1} 寫在 ${d1} 的下面。`,
+      vis: () => `
+        <div class="vsec">
+          <div class="vlabel">把 <b>${d1}</b> 個「十」平均分給 <b>${b}</b> 組</div>
+          <div class="vgroups">
+            ${Array.from({ length: b }, () =>
+              `<div class="vgroup">${tenHTML(q1)}</div>`).join('')}
+          </div>
+          <div class="vnote">每組拿到 ${q1} 個十 → 一共用掉 ${p1} 個十</div>
+        </div>`
+    });
+    S++;
+
+    /* ---- 步驟 3：十位餘數 ---- */
+    if (r1 > 0) {
+      cells.push({ r: R, c: 1, t: r1, s: S });
+
+      steps.push({
+        text: `${d1} − ${p1} = <b>${r1}</b>，十位還剩下 <b>${r1}</b>。`,
+        vis: () => `
+          <div class="vsec">
+            <div class="vlabel">${d1} − ${p1} = <b>${r1}</b>，還剩下 <b>${r1}</b> 個「十」</div>
+            <div class="vleftover">${tenHTML(r1)}</div>
+          </div>`
+      });
+      S++;
+    }
+
+    /* ---- 步驟 4：落下個位 ---- */
+    cells.push({ r: R, c: 2, t: d2, s: S });
+    R += 1;
+
+    steps.push({
+      text: r1 > 0
+        ? `把個位的 <b>${d2}</b> 拉下來，和剩下的 ${r1} 個十合起來，就是 <b>${n2}</b>。`
+        : `把個位的 <b>${d2}</b> 拉下來，接著要處理 <b>${n2}</b>。`,
+      vis: () => `
+        <div class="vsec">
+          <div class="vlabel">剩下的 <b>${r1}</b> 個「十」＝ <b>${r1 * 10}</b> 個「一」</div>
+          <div class="vrow">${oneHTML(r1 * 10)}</div>
+        </div>
+        <div class="vsec">
+          <div class="vlabel">再加上個位的 <b>${d2}</b> 個「一」→ 一共 <b>${n2}</b> 個「一」</div>
+          <div class="vrow">${oneHTML(n2)}</div>
+        </div>`
+    });
+    S++;
+
+    /* ---- 步驟 5：個位除法 ---- */
+    cells.push({ r: 0, c: 2, t: q2, s: S, quot: true });
+    if (p2 >= 10) {
+      cells.push({ r: R, c: 1, t: Math.floor(p2 / 10), s: S });
+      cells.push({ r: R, c: 2, t: p2 % 10, s: S });
+    } else {
+      cells.push({ r: R, c: 2, t: p2, s: S });
+    }
+    lines.push({ r: R + 1, c1: 1, c2: 2, s: S });
+    R += 2;
+
+    steps.push({
+      text: `再分<b>個位</b>：<b>${n2} ÷ ${b} = ${q2}</b>，把 ${q2} 寫在商的個位。<br>${q2} × ${b} = ${p2}，把 ${p2} 寫在 ${n2} 的下面。`,
+      vis: () => `
+        <div class="vsec">
+          <div class="vlabel">把 <b>${n2}</b> 個「一」平均分給 <b>${b}</b> 組</div>
+          <div class="vgroups">
+            ${Array.from({ length: b }, () =>
+              `<div class="vgroup">${oneHTML(q2)}</div>`).join('')}
+          </div>
+          <div class="vnote">每組拿到 ${q2} 個一</div>
+        </div>`
+    });
+    S++;
+
+    /* ---- 步驟 6：最後餘數 ---- */
+    cells.push({ r: R, c: 2, t: r2, s: S });
+
+    steps.push({
+      text: r2 === 0
+        ? `${n2} − ${p2} = <b>0</b>，剛好分完！每組得到 <b>${quotient}</b>。`
+        : `${n2} − ${p2} = <b>${r2}</b>，剩下 ${r2} 個不能再分了。<br>每組得到 <b>${quotient}</b>，餘數是 <b>${r2}</b>。`,
+      vis: () => `
+        <div class="vsec">
+          <div class="vlabel">每一組得到</div>
+          <div class="vresult">
+            <span class="tag ten-tag">${q1} 個十</span>
+            <span class="plus">+</span>
+            <span class="tag one-tag">${q2} 個一</span>
+            <span class="plus">=</span>
+            <span class="big">${quotient}</span>
+          </div>
+          ${r2 > 0
+            ? `<div class="vleftover" style="align-self:flex-start">${oneHTML(r2)}</div>
+               <div class="vnote">剩下 ${r2} 個，不能再分（餘數 ${r2}）</div>`
+            : `<div class="vnote">剛好分完，沒有剩下 🎉</div>`}
+        </div>`
+    });
+    S++;
+  }
+
+  /* =====================================================
+     情況 B：十位 < 除數 —— 直接看前兩位
+     ===================================================== */
+  else {
+    const q  = Math.floor(a / b);
+    const p  = q * b;
+    const rm = a - p;
+
+    /* ---- 步驟 2：十位不夠分，拆開 ---- */
+    steps.push({
+      text: `十位的 <b>${d1}</b> 比 <b>${b}</b> 小，不夠分成一份。<br>所以把 ${d1} 個十拆成 <b>${d1 * 10}</b> 個一，加上個位的 ${d2} 個一，合起來就是 <b>${a}</b> 個一。`,
+      vis: () => `
+        <div class="vsec">
+          <div class="vlabel">十位的 <b>${d1}</b> 不夠分 → 拆成 <b>${d1 * 10}</b> 個「一」</div>
+          <div class="vrow">${oneHTML(d1 * 10)}</div>
+        </div>
+        <div class="vsec">
+          <div class="vlabel">再加上個位的 <b>${d2}</b> 個「一」→ 一共 <b>${a}</b> 個「一」</div>
+          <div class="vrow">${oneHTML(a)}</div>
+        </div>`
+    });
+    S++;
+
+    /* ---- 步驟 3：除法 ---- */
+    cells.push({ r: 0, c: 2, t: q, s: S, quot: true });
+    if (p >= 10) {
+      cells.push({ r: R, c: 1, t: Math.floor(p / 10), s: S });
+      cells.push({ r: R, c: 2, t: p % 10, s: S });
+    } else {
+      cells.push({ r: R, c: 2, t: p, s: S });
+    }
+    lines.push({ r: R + 1, c1: 1, c2: 2, s: S });
+    R += 2;
+
+    steps.push({
+      text: `<b>${a} ÷ ${b} = ${q}</b>，把 ${q} 寫在商的個位。<br>${q} × ${b} = ${p}，把 ${p} 寫在 ${a} 的下面。`,
+      vis: () => `
+        <div class="vsec">
+          <div class="vlabel">把 <b>${a}</b> 個「一」平均分給 <b>${b}</b> 組</div>
+          <div class="vgroups">
+            ${Array.from({ length: b }, () =>
+              `<div class="vgroup">${oneHTML(q)}</div>`).join('')}
+          </div>
+          <div class="vnote">每組拿到 ${q} 個一</div>
+        </div>`
+    });
+    S++;
+
+    /* ---- 步驟 4：餘數 ---- */
+    cells.push({ r: R, c: 2, t: rm, s: S });
+
+    steps.push({
+      text: rm === 0
+        ? `${a} − ${p} = <b>0</b>，剛好分完！每組得到 <b>${quotient}</b>。`
+        : `${a} − ${p} = <b>${rm}</b>，剩下 ${rm} 個不能再分了。<br>每組得到 <b>${quotient}</b>，餘數是 <b>${rm}</b>。`,
+      vis: () => `
+        <div class="vsec">
+          <div class="vlabel">每一組得到</div>
+          <div class="vresult">
+            <span class="tag one-tag">${q} 個一</span>
+            <span class="plus">=</span>
+            <span class="big">${quotient}</span>
+          </div>
+          ${rm > 0
+            ? `<div class="vleftover" style="align-self:flex-start">${oneHTML(rm)}</div>
+               <div class="vnote">剩下 ${rm} 個（餘數 ${rm}）</div>`
+            : `<div class="vnote">剛好分完，沒有剩下 🎉</div>`}
+        </div>`
+    });
+    S++;
+  }
+
+  return { a, b, cells, lines, steps };
+}
+
+/* =========================================================
+   畫出直式
+   ========================================================= */
+function renderWorksheet(p) {
+  const ws = $('worksheet');
+  ws.innerHTML = '';
+
+  let maxRow = 1;
+  p.cells.forEach(c => { maxRow = Math.max(maxRow, c.r); });
+  p.lines.forEach(l => { maxRow = Math.max(maxRow, l.r); });
+
+  ws.style.width  = (3 * CELL) + 'px';
+  ws.style.height = ((maxRow + 1.4) * CELL) + 'px';
+
+  /* 「厂」字形 */
+  const bh = document.createElement('div');
+  bh.className = 'bracket-h';
+  bh.style.top  = CELL + 'px';
+  bh.style.left = CELL + 'px';
+  bh.style.width = (2 * CELL) + 'px';
+  ws.appendChild(bh);
+
+  const bv = document.createElement('div');
+  bv.className = 'bracket-v';
+  bv.style.top    = CELL + 'px';
+  bv.style.left   = CELL + 'px';
+  bv.style.height = (CELL + 10) + 'px';
+  ws.appendChild(bv);
+
+  /* 除數 */
+  const dv = document.createElement('div');
+  dv.className = 'cell divisor-cell';
+  dv.textContent = p.b;
+  dv.style.left = '0px';
+  dv.style.top  = CELL + 'px';
+  ws.appendChild(dv);
+
+  /* 數字格 */
+  p.cells.forEach(c => {
+    const el = document.createElement('div');
+    el.className = 'cell' + (c.quot ? ' quot' : '');
+    el.dataset.step = c.s;
+    el.textContent = c.t;
+    el.style.left = (c.c * CELL) + 'px';
+    el.style.top  = (c.r * CELL) + 'px';
+    ws.appendChild(el);
+  });
+
+  /* 橫線 */
+  p.lines.forEach(l => {
+    const el = document.createElement('div');
+    el.className = 'h-line';
+    el.dataset.step = l.s;
+    el.style.top   = (l.r * CELL) + 'px';
+    el.style.left  = (l.c1 * CELL) + 'px';
+    el.style.width = ((l.c2 - l.c1 + 1) * CELL) + 'px';
+    ws.appendChild(el);
+  });
+}
+
+/* =========================================================
+   切換步驟
+   ========================================================= */
+function goStep(n) {
+  if (!problem) return;
+  n = Math.max(1, Math.min(n, problem.steps.length));
+  curStep = n;
+
+  document.querySelectorAll('.cell[data-step]').forEach(el => {
+    const s = +el.dataset.step;
+    el.classList.toggle('hidden', s > n);
+    el.classList.toggle('now', s === n);
+  });
+
+  document.querySelectorAll('.h-line[data-step]').forEach(el => {
+    el.classList.toggle('hidden', +el.dataset.step > n);
+  });
+
+  const st = problem.steps[n - 1];
+  $('visual').innerHTML = st.vis();
+  $('explain').innerHTML =
+    `<div><span style="color:#9aa4c0;font-weight:800;margin-right:8px;">步驟 ${n}/${problem.steps.length}</span>${st.text}</div>`;
+
+  updateNav();
+}
+
+function updateNav() {
+  const total = problem ? problem.steps.length : 1;
+  $('prev').disabled = curStep <= 1;
+  $('next').disabled = curStep >= total;
+}
+
+/* =========================================================
+   自動播放
+   ========================================================= */
+function togglePlay() {
+  if (playTimer) {
+    clearInterval(playTimer);
+    playTimer = null;
+    $('play').textContent = '▶ 自動播放';
+    return;
+  }
+  if (curStep >= problem.steps.length) goStep(1);
+
+  $('play').textContent = '⏸ 暫停';
+  playTimer = setInterval(() => {
+    if (curStep >= problem.steps.length) {
+      clearInterval(playTimer);
+      playTimer = null;
+      $('play').textContent = '▶ 自動播放';
+      return;
+    }
+    goStep(curStep + 1);
+  }, 2200);
+}
+
+/* =========================================================
+   啟動
+   ========================================================= */
+function start() {
+  if (playTimer) { clearInterval(playTimer); playTimer = null; $('play').textContent = '▶ 自動播放'; }
+
+  let a = parseInt($('dividend').value, 10);
+  let b = parseInt($('divisor').value, 10);
+
+  if (isNaN(a)) a = 84;
+  if (isNaN(b)) b = 3;
+  a = Math.max(10, Math.min(99, a));
+  b = Math.max(2, Math.min(9, b));
+
+  $('dividend').value = a;
+  $('divisor').value  = b;
+
+  problem = buildProblem(a, b);
+  renderWorksheet(problem);
+  goStep(1);
+}
+
+/* =========================================================
+   事件
+   ========================================================= */
+$('go').addEventListener('click', start);
+$('rand').addEventListener('click', () => {
+  $('dividend').value = 10 + Math.floor(Math.random() * 90);
+  $('divisor').value  = 2 + Math.floor(Math.random() * 8);
+  start();
+});
+
+$('prev').addEventListener('click', () => { if (playTimer) togglePlay(); goStep(curStep - 1); });
+$('next').addEventListener('click', () => { if (playTimer) togglePlay(); goStep(curStep + 1); });
+$('play').addEventListener('click', togglePlay);
+
+$('dividend').addEventListener('keydown', e => { if (e.key === 'Enter') start(); });
+$('divisor').addEventListener('keydown',  e => { if (e.key === 'Enter') start(); });
+
+start();
+</script>
+</body>
+</html>
